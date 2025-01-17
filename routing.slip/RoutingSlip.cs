@@ -1,56 +1,57 @@
-﻿namespace routing.slip
-{
-    class RoutingSlipActivityWrapper(Func<IParam, Task> execute, Func<IParam, Task> compensate)
-    {
-        public Task ExecuteAsync(IParam param) => execute(param);
-        public Task CompensateAsync(IParam param) => compensate(param);
-    }
+﻿using System;
 
+namespace routing.slip
+{
     internal class RoutingSlip
     {
-        private readonly Dictionary<RoutingSlipActivityWrapper, IParam> _activities;
-        private readonly Dictionary<RoutingSlipActivityWrapper, IParam> _executedActivities;
+        private readonly string _name;
+        private List<Func<Task>> _activities;
+        private List<(Func<Task>, Func<Task>)> _activitiesCompensate;
+        private List<(Func<Task>, Func<Task>)> _executedActivities;
 
-        public RoutingSlip()
+        public RoutingSlip(string name)
         {
+            _name = name;
+
             _activities = [];
+            _activitiesCompensate = [];
             _executedActivities = [];
         }
-        public void AddActivity<T>(IRoutingSlipActivity<T> activity, IParam obj) where T : IParam
-        {
-            var wrapper = new RoutingSlipActivityWrapper
-                (
-                   param => activity.ExecuteAsync((T)param),
-                   param => activity.CompensateAsync((T)param)
-                );
 
-            _activities.Add(wrapper, obj);
+        public void AddActivity(Func<Task> action)
+        {
+            _activities.Add(action);
         }
-        public async Task ExecuteAsync()
+        public void AddActivity((Func<Task>, Func<Task>) action)
+        {
+            _activitiesCompensate.Add(action);
+        }
+        public async Task Execute()
         {
             try
             {
                 foreach (var activity in _activities)
                 {
-                    Console.WriteLine($"Starting {activity.Key.GetType().Name}...");
-                    _executedActivities.Add(activity.Key, activity.Value);
-                    await activity.Key.ExecuteAsync(activity.Value);
+                    await activity();
                 }
 
-                Console.WriteLine("Routing Slip completed successfully!");
+                foreach (var activity in _activitiesCompensate)
+                {
+                    _executedActivities.Add(activity);
+
+                    await activity.Item1();
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error during execution: {ex.Message}");
-                await CompensateAsync(); // Realiza o rollback
+                await Compensate(); // Realiza o rollback
             }
         }
-        private async Task CompensateAsync()
+        private async Task Compensate()
         {
-            Console.WriteLine("Compensating activities...");
             foreach (var activity in _executedActivities)
             {
-                await activity.Key.CompensateAsync(activity.Value);
+                await activity.Item2();
             }
         }
     }
