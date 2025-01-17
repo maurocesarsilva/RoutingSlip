@@ -1,18 +1,30 @@
 ﻿namespace routing.slip
 {
+    class RoutingSlipActivityWrapper(Func<IParam, Task> execute, Func<IParam, Task> compensate)
+    {
+        public Task ExecuteAsync(IParam param) => execute(param);
+        public Task CompensateAsync(IParam param) => compensate(param);
+    }
+
     internal class RoutingSlip
     {
-        private readonly Dictionary<IRoutingSlipActivity, object> _activities;
-        private readonly Dictionary<IRoutingSlipActivity, object> _executedActivities;
+        private readonly Dictionary<RoutingSlipActivityWrapper, IParam> _activities;
+        private readonly Dictionary<RoutingSlipActivityWrapper, IParam> _executedActivities;
 
         public RoutingSlip()
         {
             _activities = [];
             _executedActivities = [];
         }
-        public void AddActivity<T>(IRoutingSlipActivity activity, T obj) 
+        public void AddActivity<T>(IRoutingSlipActivity<T> activity, IParam obj) where T : IParam
         {
-            _activities.Add(activity, obj);
+            var wrapper = new RoutingSlipActivityWrapper
+                (
+                   param => activity.ExecuteAsync((T)param),
+                   param => activity.CompensateAsync((T)param)
+                );
+
+            _activities.Add(wrapper, obj);
         }
         public async Task ExecuteAsync()
         {

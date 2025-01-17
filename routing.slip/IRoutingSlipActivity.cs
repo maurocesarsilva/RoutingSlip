@@ -1,8 +1,8 @@
 ﻿namespace routing.slip
 {
-    internal interface IRoutingSlipActivity
+    internal interface IRoutingSlipActivity<T>  where T : IParam
     {
-        Task ExecuteAsync<T>(T obj);
-        Task CompensateAsync<T>(T obj);
+        Task ExecuteAsync(T obj);
+        Task CompensateAsync(T obj);
     }
 }

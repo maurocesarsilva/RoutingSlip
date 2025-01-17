@@ -1,18 +1,16 @@
 ﻿namespace routing.slip
 {
-    internal class ActivityA : IRoutingSlipActivity
+    internal class ActivityA : IRoutingSlipActivity<Param>
     {
-        public async Task CompensateAsync<T>(T obj)
+        public async Task CompensateAsync(Param obj)
         {
-            var objStr = obj as string;
-            Console.WriteLine($"Activity {objStr}...");
+            Console.WriteLine($"Activity {obj.Value}...");
             await Task.Delay(500);
         }
 
-        public async Task ExecuteAsync<T>(T obj)
+        public async Task ExecuteAsync(Param obj)
         {
-            var objStr = obj as string;
-            Console.WriteLine($"Compensating Activity {objStr}...");
+            Console.WriteLine($"Compensating Activity {obj.Value}...");
             await Task.Delay(500);
         }
     }
